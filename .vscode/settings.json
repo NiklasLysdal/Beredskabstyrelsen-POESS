@@ -1,0 +1,17 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/DCR/microservice",
+    "${workspaceFolder}/DCR/logging_service",
+    "${workspaceFolder}/BPMN/deployer",
+    "${workspaceFolder}/BPMN/logging_service",
+    "${workspaceFolder}/BPMN/event_streams"
+  ],
+  "python.autoComplete.extraPaths": [
+    "${workspaceFolder}/DCR/microservice",
+    "${workspaceFolder}/DCR/logging_service",
+    "${workspaceFolder}/BPMN/deployer",
+    "${workspaceFolder}/BPMN/logging_service",
+    "${workspaceFolder}/BPMN/event_streams"
+  ]
+}

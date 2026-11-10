@@ -2,6 +2,7 @@
 
 # python stuff
 venv/
+.venv/
 __pycache__/
 
 # Runtime logging and generated XES artifacts
