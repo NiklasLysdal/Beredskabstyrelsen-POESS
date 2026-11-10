@@ -10,7 +10,7 @@ from flask import Flask, jsonify, request
 from pyzeebe import Job, ZeebeClient, ZeebeWorker
 
 ZEEBE_ADDRESS = os.getenv("ZEEBE_ADDRESS", "zeebe:26500")
-BPMN_FILE = os.getenv("BPMN_FILE", "/bpmn/food_order.bpmn")
+BPMN_FILE = os.getenv("BPMN_FILE", "/bpmn/wildfire_detection.bpmn")
 SIDDHI_CALLBACK_URL = os.getenv("SIDDHI_CALLBACK_URL", "http://siddhi:7072/middleman")
 CUSTOMER_PROCESS_ID = "Process_06p6nly"
 
@@ -23,11 +23,6 @@ process_keys = {}
 
 def now_iso():
     return datetime.now(timezone.utc).isoformat()
-
-
-def get_order_id(data):
-    return data.get("order_id") or data.get("event", {}).get("order_id")
-
 
 def callback(order_id, case_id, event, payload=None, error=""):
     body = {
@@ -42,10 +37,32 @@ def callback(order_id, case_id, event, payload=None, error=""):
     response = requests.post(SIDDHI_CALLBACK_URL, json=body, timeout=30)
     response.raise_for_status()
 
+async def register_incident_task(incidentId):
+    print(f"Registering incident: {incidentId}", flush=True)
+    return {}
 
-def get_case_id(order_id, supplied_case_id=None):
-    return supplied_case_id or process_keys.get(order_id, "UNKNOWN_CASE")
 
+async def record_false_alarm_task(incidentId):
+    print(f"Recording false alarm: {incidentId}", flush=True)
+    return {}
+
+
+async def notify_cep_task(incidentId):
+    print(f"Notifying CEP of false alarm: {incidentId}", flush=True)
+    return {}
+
+
+async def request_increased_monitoring_task(incidentId, severity):
+    print(
+        f"Requesting increased monitoring: {incidentId}, severity={severity}",
+        flush=True,
+    )
+    return {}
+
+
+async def print_process_ended_task(incidentId):
+    print(f"Process ended: {incidentId}", flush=True)
+    return {}
 
 def run_async(coroutine):
     if event_loop is None:
@@ -73,8 +90,6 @@ def place_order():
     callback(order_id, process_key, "PlaceOrder", {"processInstanceKey": process_key})
     return jsonify({"status": "accepted", "case_id": str(process_key)})
 
-
-@app.post("/cancel_order")
 def cancel_order():
     data = request.get_json(force=True)
     order_id = get_order_id(data)
@@ -84,8 +99,6 @@ def cancel_order():
     run_async(publish_message("OrderCancelled", order_id, {"orderId": order_id, "caseId": case_id}))
     return jsonify({"status": "accepted"})
 
-
-@app.post("/receive_order")
 def receive_order():
     data = request.get_json(force=True)
     order_id = get_order_id(data)
@@ -95,8 +108,6 @@ def receive_order():
     run_async(publish_message("FoodReceived", order_id, {"orderId": order_id, "caseId": case_id}))
     return jsonify({"status": "accepted"})
 
-
-@app.post("/pay_order")
 def pay_order():
     data = request.get_json(force=True)
     order_id = get_order_id(data)
@@ -104,47 +115,16 @@ def pay_order():
         return jsonify({"error": "order_id is required"}), 400
     return jsonify({"status": "accepted"})
 
-
-async def place_order_task(orderId, job: Job):
-    variables = {"orderId": orderId, "caseId": job.process_instance_key}
-    order_id = orderId
-    await publish_message("OrderCreated", order_id, variables)
-    return variables
-
-
-async def make_order_task(orderId, caseId=None, job: Job = None):
-    return {"orderId": orderId, "caseId": caseId} if caseId else {"orderId": orderId}
-
-
-async def cancel_order_task(orderId, caseId, job: Job):
-    variables = {"orderId": orderId, "caseId": caseId}
-    callback(orderId, caseId, "CancelOrder", variables)
-    return variables
-
-
-async def send_food_task(orderId, caseId=None, job: Job = None):
-    variables = {"orderId": orderId, "caseId": caseId} if caseId else {"orderId": orderId}
-    await publish_message("FoodReceived", orderId, variables)
-    callback(orderId, caseId, "ReceiveOrder", variables)
-    return variables
-
-
-async def request_payment_task(orderId, caseId=None, job: Job = None):
-    variables = {"orderId": orderId, "caseId": caseId} if caseId else {"orderId": orderId}
-    callback(orderId, caseId, "PayOrder", variables)
-    return variables
-
-
 async def deploy_and_work():
     global client, worker
     channel = grpc.aio.insecure_channel(ZEEBE_ADDRESS)
     client = ZeebeClient(grpc_channel=channel)
     worker = ZeebeWorker(grpc_channel=channel)
-    worker.task(task_type="place-order", variables_to_fetch=["orderId"])(place_order_task)
-    worker.task(task_type="make-order", variables_to_fetch=["orderId", "caseId"])(make_order_task)
-    worker.task(task_type="cancel-order", variables_to_fetch=["orderId", "caseId"])(cancel_order_task)
-    worker.task(task_type="send-food", variables_to_fetch=["orderId", "caseId"])(send_food_task)
-    worker.task(task_type="request-payment", variables_to_fetch=["orderId", "caseId"])(request_payment_task)
+    worker.task(task_type="register_incident", variables_to_fetch=["incidentId"])(register_incident_task)
+    worker.task(task_type="record_false_alarm", variables_to_fetch=["incidentId"])(record_false_alarm_task)
+    worker.task(task_type="notify_cep", variables_to_fetch=["incidentId"])(notify_cep_task)
+    worker.task(task_type="request_increased_monitoring", variables_to_fetch=["incidentId", "severity"])(request_increased_monitoring_task)
+    worker.task(task_type="print_process_ended", variables_to_fetch=["incidentId"])(print_process_ended_task)
     for attempt in range(1, 31):
         try:
             deployment = await client.deploy_process(BPMN_FILE)
