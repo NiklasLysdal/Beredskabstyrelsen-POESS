@@ -1,4 +1,4 @@
-"""Send an ordered event stream to the Siddhi customer input endpoint."""
+"""Send an ordered event stream to the Siddhi input endpoint to simulate the Action Plan DCR process."""
 
 import argparse
 import json
@@ -10,14 +10,31 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 SUPPORTED_ACTIONS = {
-    "PlaceOrder",
-    "ReceiveOrder",
-    "CancelOrder",
-    "PayOrder",
+    "ArriveOnScene",
+    "SurveyForFire",
+    "IdentifySpreadingPaths",
+    "DefineMMI",
+    "ConductRiskAssessment",
+    "ChangeInWindDirection",
+    "EstablishLookouts",
+    "EstablishAnchorPoint",
+    "EstablishSecureCommunicationSystem",
+    "EstablishEscapeRoutes",
+    "EstablishSafeZones",
+    "DrawUnitsOnMap",
+    "ChangeInHumidity",
+    "InitiateDirectAttack",
+    "ChooseAttackMethod",
+    "InitiateIndirectAttack",
+    "BreachesControlLine",
+    "EstablishControlLine",
+    "EvacuateCrewToSafeZone",
+    "OccursBehindCrew",
+    "ChangeInFlameHeight",
 }
 
 
-def load_events(path):
+def load_events(path, validate_actions=True):
     text = path.read_text(encoding="utf-8")
     if path.suffix.lower() == ".json":
         parsed = json.loads(text)
@@ -33,11 +50,20 @@ def load_events(path):
     for index, event in enumerate(events, start=1):
         if not isinstance(event, dict):
             raise ValueError(f"Event {index} must be a JSON object")
-        if not isinstance(event.get("order_id"), str) or not event["order_id"]:
-            raise ValueError(f"Event {index} must have a non-empty string order_id")
-        if event.get("action") not in SUPPORTED_ACTIONS:
+
+        incident_id = event.get("incident_id")
+        if not incident_id or not isinstance(incident_id, str):
+            raise ValueError(f"Event {index} must have a non-empty string 'incident_id'")
+
+        action = event.get("action")
+        if not action or not isinstance(action, str):
+            raise ValueError(f"Event {index} must have a non-empty string 'action'")
+
+        if validate_actions and action not in SUPPORTED_ACTIONS:
             actions = ", ".join(sorted(SUPPORTED_ACTIONS))
-            raise ValueError(f"Event {index} has an unsupported action; use: {actions}")
+            raise ValueError(
+                f"Event {index} has unsupported action '{action}'. Use --no-validate to bypass, or one of:\n{actions}"
+            )
 
     return events
 
@@ -57,13 +83,13 @@ def send_event(url, event, timeout):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Send an ordered JSON/JSONL event stream to Siddhi."
+        description="Send an ordered JSON/JSONL event stream to Siddhi for the Action Plan DCR simulation."
     )
     parser.add_argument("file", type=Path, help="JSON array or JSONL event stream file")
     parser.add_argument(
         "--url",
-        default=os.getenv("SIDDHI_URL", "http://localhost:7071/customer"),
-        help="Siddhi customer endpoint (default: %(default)s)",
+        default=os.getenv("SIDDHI_URL", "http://localhost:7071/incident"),
+        help="Siddhi incident input endpoint (default: %(default)s)",
     )
     parser.add_argument(
         "--delay",
@@ -76,6 +102,11 @@ def parse_args():
         type=float,
         default=10.0,
         help="HTTP timeout in seconds (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--no-validate",
+        action="store_true",
+        help="Skip action name validation against known Action Plan events",
     )
     parser.add_argument(
         "--dry-run",
@@ -92,13 +123,16 @@ def main():
     if not args.file.is_file():
         raise FileNotFoundError(f"Stream file not found: {args.file}")
 
-    events = load_events(args.file)
+    events = load_events(args.file, validate_actions=not args.no_validate)
     total = len(events)
     print(f"Loaded {total} event(s) from {args.file}")
 
     for index, event in enumerate(events, start=1):
+        action = event["action"]
+        incident_id = event["incident_id"]
+
         if args.dry_run:
-            print(f"[{index}/{total}] {event['action']} {event['order_id']}")
+            print(f"[{index}/{total}] {action} ({incident_id})")
         else:
             try:
                 status, response = send_event(args.url, event, args.timeout)
@@ -106,8 +140,7 @@ def main():
                 print(f"[{index}/{total}] failed: {error}", file=sys.stderr)
                 return 1
             print(
-                f"[{index}/{total}] {event['action']} {event['order_id']} "
-                f"-> HTTP {status} {response}"
+                f"[{index}/{total}] {action} ({incident_id}) -> HTTP {status} {response}"
             )
 
         if index < total and args.delay:

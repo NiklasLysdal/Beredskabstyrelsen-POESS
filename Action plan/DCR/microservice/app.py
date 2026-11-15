@@ -6,11 +6,27 @@ from enum import Enum
 from datetime import datetime, timezone
 
 class EventID(str, Enum):
-    PlaceOrder = "PlaceOrder"
-    ReceiveOrder = "ReceiveOrder"
-    CancelOrder = "CancelOrder"
-    PayOrder = "PayOrder"
-    GetAvailableActions = "GetAvailableActions"
+    ArriveOnScene = "ArriveOnScene"
+    SurveyForFire = "SurveyForFire"
+    IdentifySpreadingPaths = "IdentifySpreadingPaths"
+    DefineMMI = "DefineMMI"
+    ConductRiskAssessment = "ConductRiskAssessment"
+    ChangeInWindDirection = "ChangeInWindDirection"
+    EstablishLookouts = "EstablishLookouts"
+    EstablishAnchorPoint = "EstablishAnchorPoint"
+    EstablishSecureCommunicationSystem = "EstablishSecureCommunicationSystem"
+    EstablishEscapeRoutes = "EstablishEscapeRoutes"
+    EstablishSafeZones = "EstablishSafeZones"
+    DrawUnitsOnMap = "DrawUnitsOnMap"
+    ChangeInHumidity = "ChangeInHumidity"
+    InitiateDirectAttack = "InitiateDirectAttack"
+    ChooseAttackMethod = "ChooseAttackMethod"
+    InitiateIndirectAttack = "InitiateIndirectAttack"
+    BreachesControlLine = "BreachesControlLine"
+    EstablishControlLine = "EstablishControlLine"
+    EvacuateCrewToSafeZone = "EvacuateCrewToSafeZone"
+    OccursBehindCrew = "OccursBehindCrew"
+    ChangeInFlameHeight = "ChangeInFlameHeight"
 
 app = Flask(__name__)
 
@@ -21,9 +37,9 @@ def utc_now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 
-def send_callback_to_siddhi(order_id, case_id, event_name, dcr_result):
+def send_callback_to_siddhi(incident_id, case_id, event_name, dcr_result):
     payload = {
-        "order_id": order_id,
+        "incident_id": incident_id,
         "case_id": case_id,
         "event": event_name,
         "timestamp": utc_now_iso(),
@@ -40,11 +56,11 @@ def send_callback_to_siddhi(order_id, case_id, event_name, dcr_result):
 
     requests.post(SIDDHI_CALLBACK_URL, json=payload)
 
-def process_event(order_id, case_id, event_name):
+def process_event(incident_id, case_id, event_name):
     dcr_result = execute_event(case_id, event_name.value)
     # always fetch the current enabled events so every callback tells siddhi what's possible next
     dcr_result["enabledEvents"] = get_enabled_events(case_id)
-    send_callback_to_siddhi(order_id, case_id, event_name.value, dcr_result) #required because siddhi doesn't wait for the response from dcr, so we need to send it manually
+    send_callback_to_siddhi(incident_id, case_id, event_name.value, dcr_result) #required because siddhi doesn't wait for the response from dcr, so we need to send it manually
     return jsonify({"status": "ok"})
 
 

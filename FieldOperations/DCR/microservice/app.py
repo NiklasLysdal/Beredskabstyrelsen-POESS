@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 import json
 import requests
-from dcr_helper import create_case, execute_event, get_enabled_events
+from Mobilization.DCR.microservice.dcr_helper import create_case, execute_event, get_enabled_events
 from enum import Enum
 from datetime import datetime, timezone
 

@@ -1,0 +1,17 @@
+{"incident_id":"incident-001","action":"ArriveOnScene"}
+{"incident_id":"incident-001","action":"SurveyForFire"}
+{"incident_id":"incident-001","action":"IdentifySpreadingPaths"}
+{"incident_id":"incident-001","action":"DefineMMI"}
+{"incident_id":"incident-001","action":"ConductRiskAssessment"}
+{"incident_id":"incident-001","action":"EstablishLookouts"}
+{"incident_id":"incident-001","action":"EstablishAnchorPoint"}
+{"incident_id":"incident-001","action":"EstablishSecureCommunicationSystem"}
+{"incident_id":"incident-001","action":"EstablishEscapeRoutes"}
+{"incident_id":"incident-001","action":"EstablishSafeZones"}
+{"incident_id":"incident-001","action":"DrawUnitsOnMap"}
+{"incident_id":"incident-001","action":"ChooseAttackMethod"}
+{"incident_id":"incident-001","action":"InitiateDirectAttack"}
+{"incident_id":"incident-002","action":"ArriveOnScene"}
+{"incident_id":"incident-002","action":"SurveyForFire"}
+{"incident_id":"incident-002","action":"ChangeInWindDirection"}
+{"incident_id":"incident-002","action":"EvacuateCrewToSafeZone"}
