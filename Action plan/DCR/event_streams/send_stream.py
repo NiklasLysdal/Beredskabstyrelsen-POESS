@@ -20,9 +20,10 @@ SUPPORTED_ACTIONS = {
     "EstablishAnchorPoint",
     "EstablishSecureCommunicationSystem",
     "EstablishEscapeRoutes",
-    "EstablishSafeZones",
+    "DistanceToFire",
     "DrawUnitsOnMap",
-    "ChangeInHumidity",
+    "A7",
+    "Humidity",
     "InitiateDirectAttack",
     "ChooseAttackMethod",
     "InitiateIndirectAttack",
@@ -30,7 +31,14 @@ SUPPORTED_ACTIONS = {
     "EstablishControlLine",
     "EvacuateCrewToSafeZone",
     "OccursBehindCrew",
-    "ChangeInFlameHeight",
+    "FlameHeight",
+}
+
+ENVIRONMENT_ACTIONS = {
+    "ChangeInWindDirection",
+    "Humidity",
+    "FlameHeight",
+    "OccursBehindCrew",
 }
 
 
@@ -88,8 +96,8 @@ def parse_args():
     parser.add_argument("file", type=Path, help="JSON array or JSONL event stream file")
     parser.add_argument(
         "--url",
-        default=os.getenv("SIDDHI_URL", "http://localhost:7071/incident"),
-        help="Siddhi incident input endpoint (default: %(default)s)",
+        default=os.getenv("SIDDHI_URL", "http://localhost:7071/actor"),
+        help="Siddhi actor input endpoint (default: %(default)s)",
     )
     parser.add_argument(
         "--delay",
@@ -130,12 +138,15 @@ def main():
     for index, event in enumerate(events, start=1):
         action = event["action"]
         incident_id = event["incident_id"]
+        target_url = args.url
+        if action in ENVIRONMENT_ACTIONS and target_url.endswith("/actor"):
+            target_url = target_url[:-6] + "/environment"
 
         if args.dry_run:
-            print(f"[{index}/{total}] {action} ({incident_id})")
+            print(f"[{index}/{total}] {action} ({incident_id}) -> {target_url}")
         else:
             try:
-                status, response = send_event(args.url, event, args.timeout)
+                status, response = send_event(target_url, event, args.timeout)
             except (HTTPError, URLError, TimeoutError) as error:
                 print(f"[{index}/{total}] failed: {error}", file=sys.stderr)
                 return 1

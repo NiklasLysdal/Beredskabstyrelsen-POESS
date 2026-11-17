@@ -16,9 +16,10 @@ class EventID(str, Enum):
     EstablishAnchorPoint = "EstablishAnchorPoint"
     EstablishSecureCommunicationSystem = "EstablishSecureCommunicationSystem"
     EstablishEscapeRoutes = "EstablishEscapeRoutes"
-    EstablishSafeZones = "EstablishSafeZones"
+    DistanceToFire = "DistanceToFire"
     DrawUnitsOnMap = "DrawUnitsOnMap"
-    ChangeInHumidity = "ChangeInHumidity"
+    A7 = "A7"
+    Humidity = "Humidity"
     InitiateDirectAttack = "InitiateDirectAttack"
     ChooseAttackMethod = "ChooseAttackMethod"
     InitiateIndirectAttack = "InitiateIndirectAttack"
@@ -26,7 +27,7 @@ class EventID(str, Enum):
     EstablishControlLine = "EstablishControlLine"
     EvacuateCrewToSafeZone = "EvacuateCrewToSafeZone"
     OccursBehindCrew = "OccursBehindCrew"
-    ChangeInFlameHeight = "ChangeInFlameHeight"
+    FlameHeight = "FlameHeight"
 
 app = Flask(__name__)
 
@@ -56,49 +57,48 @@ def send_callback_to_siddhi(incident_id, case_id, event_name, dcr_result):
 
     requests.post(SIDDHI_CALLBACK_URL, json=payload)
 
-def process_event(incident_id, case_id, event_name):
-    dcr_result = execute_event(case_id, event_name.value)
+def process_event(incident_id, case_id, event_name, data=None):
+    event_str = event_name.value if hasattr(event_name, 'value') else str(event_name)
+    dcr_result = execute_event(case_id, event_str, data=data)
     # always fetch the current enabled events so every callback tells siddhi what's possible next
     dcr_result["enabledEvents"] = get_enabled_events(case_id)
-    send_callback_to_siddhi(incident_id, case_id, event_name.value, dcr_result) #required because siddhi doesn't wait for the response from dcr, so we need to send it manually
+    send_callback_to_siddhi(incident_id, case_id, event_str, dcr_result) #required because siddhi doesn't wait for the response from dcr, so we need to send it manually
     return jsonify({"status": "ok"})
 
 
-@app.route("/place_order", methods=["POST"])
-def place_order():
+@app.route("/InitIncidentOut", methods=["POST"])
+def init_incident():
     print("[RAW BODY]", request.data)
     data = request.json
-    order_id = data["event"]["order_id"]
-    print(f"[PlaceOrder] Received order_id = {order_id}")
+    incident_id = data["event"]["incident_id"]
+    action = data["event"].get("action")
+    if not action:
+        action = EventID.ArriveOnScene.value
+    payload = data["event"].get("payload", {})
 
+    print(f"[InitIncident] Received incident_id = {incident_id}, action = {action}")
     # instantiate a new DCR case
     case_id = create_case()
+    return process_event(incident_id, case_id, action, data=payload)
 
-    return process_event(order_id, case_id, EventID.PlaceOrder)
 
-
-@app.route("/receive_order", methods=["POST"])
-def receive_order():
+@app.route("/ExecuteEventOut", methods=["POST"])
+def execute_event_route():
+    print("[RAW BODY]", request.data)
     data = request.json
-    order_id = data.get("order_id")
-    case_id = data.get("case_id")
-    return process_event(order_id, case_id, EventID.ReceiveOrder)
+    case_id = data["event"]["case_id"]
+    payload = data["event"].get("payload", {})
+    incident_id = data["event"]["incident_id"]
+    print(f"[ExecuteEvent] Received incident_id = {incident_id}")
+    action = data["event"]["action"]
+
+    return process_event(incident_id, case_id, action, data=payload)
 
 
-@app.route("/cancel_order", methods=["POST"])
-def cancel_order():
-    data = request.json
-    order_id = data.get("order_id")
-    case_id = data.get("case_id")
-    return process_event(order_id, case_id, EventID.CancelOrder)
 
 
-@app.route("/pay_order", methods=["POST"])
-def pay_order():
-    data = request.json
-    order_id = data.get("order_id")
-    case_id = data.get("case_id")
-    return process_event(order_id, case_id, EventID.PayOrder)
+
+
 
 
 @app.route("/enabled_events/<case_id>", methods=["GET"])

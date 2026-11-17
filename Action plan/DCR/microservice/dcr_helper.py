@@ -65,9 +65,11 @@ def get_enabled_events(case_id):
     return events
 
 
-def execute_event(case_id, event_id):
+def execute_event(case_id, event_id,data=None):
+    if data is None:
+        data ={}
     url = f"{DCR_API_BASE}/graphs/{DCR_GRAPH_ID}/sims/{case_id}/events/{event_id}"
-    r = requests.post(url, headers=HEADERS, auth=(USERNAME, PASSWORD), json={})
+    r = requests.post(url, headers=HEADERS, auth=(USERNAME, PASSWORD), json=data)
 
     if r.status_code not in (200, 201, 204):
         return {

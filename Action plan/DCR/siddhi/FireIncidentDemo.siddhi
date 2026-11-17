@@ -1,0 +1,167 @@
+@App:name("FireIncidentDemo")
+
+/* -----------------------------
+   INPUT STREAMS
+   ----------------------------- */
+
+/* Actor / Crew actions */
+@source(
+    type='http',
+    receiver.url="http://0.0.0.0:7071/actor",
+    @map(type='json')
+)
+define stream ActorStream(incident_id string, action string);
+
+/* Environment / Weather / Fire telemetry */
+@source(
+    type='http',
+    receiver.url="http://0.0.0.0:7071/environment",
+    @map(type='json')
+)
+define stream EnvironmentStream(incident_id string, action string);
+
+/* Middleman callback */
+@source(
+    type='http',
+    receiver.url="http://0.0.0.0:7072/middleman",
+    @map(type='json')
+)
+define stream MiddlemanStream(
+    incident_id string,
+    case_id string,
+    event string,
+    timestamp string,
+    role string,
+    payload string,
+    error string
+);
+
+
+/* -----------------------------
+   TABLES
+   ----------------------------- */
+
+define table IncidentCases(
+    incident_id string,
+    case_id string
+);
+
+
+/* -----------------------------
+   OUTPUT STREAMS (to microservice)
+   ----------------------------- */
+
+@sink(type='http',
+      publisher.url='http://microservice:5001/InitIncidentOut',
+      method='POST',
+      @map(type='json'))
+define stream InitIncidentOut(incident_id string, action string);
+define stream InitIncidentOutAttempt(incident_id string, case_id string, action string);
+
+@sink(type='http',
+      publisher.url='http://microservice:5001/ExecuteEventOut',
+      method='POST',
+      @map(type='json'))
+define stream ExecuteEventOut(incident_id string, case_id string, action string);
+define stream ExecuteEventOutAttempt(incident_id string, case_id string, action string);
+
+
+@sink(type='http',
+      publisher.url='http://microservice:5001/get_available_actions',
+      method='POST',
+      @map(type='json'))
+define stream GetAvailableActionsOut(incident_id string, case_id string);
+define stream GetAvailableActionsOutAttempt(incident_id string, case_id string);
+
+define stream ErrorStream(incident_id string, error string);
+
+/* -----------------------------
+   OUTPUT STREAMS (to logging)
+   ----------------------------- */
+
+@sink(type='http',
+      publisher.url='http://logging-service:5010/log',
+      method='POST',
+      @map(type='json'))
+define stream Logging(
+    event string,
+    case_id string,
+    incident_id string,
+    timestamp string,
+    role string,
+    payload string,
+    error string
+);
+
+
+/* -----------------------------
+   ROUTING LOGIC
+   ----------------------------- */
+
+/* Incident registration*/
+from ActorStream[action == "ArriveOnScene"] as A
+left outer join IncidentCases as I
+    on A.incident_id == I.incident_id
+select A.incident_id, I.case_id, A.action
+insert into InitIncidentOutAttempt;
+
+from InitIncidentOutAttempt[case_id is null and not(incident_id is null)]
+select incident_id, action
+insert into InitIncidentOut;
+
+from InitIncidentOutAttempt[incident_id is null]
+select "missing_id" as incident_id, "Didn't receive an incident_id" as error
+insert into ErrorStream;
+
+from InitIncidentOutAttempt[not(case_id is null)]
+select incident_id, "Can't create an incident that already exists" as error
+insert into ErrorStream;
+
+
+/* Actor events*/
+from ActorStream[action != "ArriveOnScene"] as A
+left outer join IncidentCases as I
+    on A.incident_id == I.incident_id
+select A.incident_id, I.case_id, A.action
+insert into ExecuteEventOutAttempt;
+
+
+/* Environment events  */
+from EnvironmentStream as E
+left outer join IncidentCases as I
+    on E.incident_id == I.incident_id
+select E.incident_id, I.case_id, E.action
+insert into ExecuteEventOutAttempt;
+
+
+/* 4. Execute validated events against DCR */
+from ExecuteEventOutAttempt[not(case_id is null)]
+select incident_id, case_id, action
+insert into ExecuteEventOut;
+
+from ExecuteEventOutAttempt[case_id is null]
+select incident_id, "Cannot execute event for an incident that has not arrived on scene yet" as error
+insert into ErrorStream;
+
+
+/* -----------------------------
+   MIDDLEMAN CALLBACKS
+   ----------------------------- */
+
+/* Middleman tells Siddhi the incident case is created */
+from MiddlemanStream[error == "" or error is null]
+select incident_id, case_id
+insert into IncidentCases;
+
+
+/* -----------------------------
+   ERROR & AUDIT LOGGING
+   ----------------------------- */
+
+from ErrorStream
+select "Error" as event, "UNKNOWN_CASE" as case_id, incident_id, convert(currentTimeMillis(), "string") as timestamp, "system" as role, "" as payload, error
+insert into Logging;
+
+from MiddlemanStream
+select event, case_id, incident_id, timestamp, role, payload, ifThenElse(error is null, "", error) as error
+insert into Logging;
