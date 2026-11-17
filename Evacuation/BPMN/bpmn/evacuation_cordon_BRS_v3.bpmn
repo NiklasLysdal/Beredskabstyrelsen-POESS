@@ -1,0 +1,643 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_Evacuation_v3" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.51.1" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.9.0">
+  <bpmn:collaboration id="Collaboration_Evacuation">
+    <bpmn:participant id="Participant_Evacuation" name="Evacuation and Cordon" processRef="Process_Evacuation" />
+    <bpmn:participant id="Participant_Police" name="Police" processRef="Process_Police" />
+    <bpmn:participant id="Participant_Reception" name="Reception Center" processRef="Process_Reception" />
+    <bpmn:participant id="Participant_Cep" name="Cep" processRef="Process_Cep" />
+    <bpmn:messageFlow id="Msg_Start" name="Evacuation decision" sourceRef="Participant_Police" targetRef="Event_Start" />
+    <bpmn:messageFlow id="Msg_CepRequest" name="Request fire and traffic data" sourceRef="Activity_ReqCep" targetRef="Participant_Cep" />
+    <bpmn:messageFlow id="Msg_CepSituation" name="Fire and traffic situation" sourceRef="Participant_Cep" targetRef="Event_CepReceived" />
+    <bpmn:messageFlow id="Msg_EarlyWarning" name="Early warning: predicted spread threatens inhabited area" sourceRef="Participant_Cep" targetRef="Participant_Police" />
+    <bpmn:messageFlow id="Msg_Cordon" name="Request outer cordon" sourceRef="Activity_ReqPolice" targetRef="Participant_Police" />
+    <bpmn:messageFlow id="Msg_Capacity" name="Reserve capacity" sourceRef="Activity_ReqCap" targetRef="Participant_Reception" />
+    <bpmn:messageFlow id="Msg_Transport" name="Evacuees transported" sourceRef="Activity_Evac" targetRef="Participant_Reception" />
+    <bpmn:messageFlow id="Msg_Search" name="Assistance for refusing persons" sourceRef="Activity_Search" targetRef="Participant_Police" />
+    <bpmn:messageFlow id="Msg_Handover" name="Registers, cordon and evidence handed over" sourceRef="Activity_Handover" targetRef="Participant_Police" />
+    <bpmn:messageFlow id="Msg_Blocked" sourceRef="Participant_Cep" targetRef="Event_SubStart" />
+    <bpmn:messageFlow id="Msg_CrewThreat" name="Crew safety threat" sourceRef="Participant_Cep" targetRef="Event_CrewStart" />
+    <bpmn:textAnnotation id="TextAnnotation_Laces">
+      <bpmn:text>Lookouts, Awareness, Communications, Escape routes, Safety zones</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="TextAnnotation_Missing">
+      <bpmn:text>Store residents of the zone who are not yet evacuated (GDPR: only necessary data)</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="TextAnnotation_Inner">
+      <bpmn:text>BRS cordons the site until police arrive</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="TextAnnotation_Evacuated">
+      <bpmn:text>Store name, time, reception center, and entries without consent</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="TextAnnotation_Cep">
+      <bpmn:text>Complex Event Processing of fire spread and traffic data</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="TextAnnotation_Situation">
+      <bpmn:text>Fire perimeter, predicted spread and road status are used to define zones and select routes</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="TextAnnotation_Crew">
+      <bpmn:text>CEP rule: fast fire spread, wind shift or closing escape route near field crews</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="TextAnnotation_0lvyx31">
+      <bpmn:text>All Persons accounted for?</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_Laces" associationDirection="None" sourceRef="Activity_Safety" targetRef="TextAnnotation_Laces" />
+    <bpmn:association id="Association_Missing" associationDirection="None" sourceRef="Activity_Register" targetRef="TextAnnotation_Missing" />
+    <bpmn:association id="Association_Inner" associationDirection="None" sourceRef="Activity_Inner" targetRef="TextAnnotation_Inner" />
+    <bpmn:association id="Association_Evacuated" associationDirection="None" sourceRef="Activity_RegEv" targetRef="TextAnnotation_Evacuated" />
+    <bpmn:association id="Association_Cep" associationDirection="None" sourceRef="Subprocess_Traffic" targetRef="TextAnnotation_Cep" />
+    <bpmn:association id="Association_Situation" associationDirection="None" sourceRef="Activity_ReqCep" targetRef="TextAnnotation_Situation" />
+    <bpmn:association id="Association_Crew" associationDirection="None" sourceRef="Subprocess_Crew" targetRef="TextAnnotation_Crew" />
+    <bpmn:association id="Association_1dv19mb" associationDirection="None" sourceRef="Gateway_All" targetRef="TextAnnotation_0lvyx31" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_Evacuation" isExecutable="true">
+    <bpmn:laneSet id="LaneSet_Evacuation">
+      <bpmn:lane id="Lane_Monitoring" name="Monitoring">
+        <bpmn:flowNodeRef>Subprocess_Traffic</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Subprocess_Crew</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Field" name="Field">
+        <bpmn:flowNodeRef>Activity_ReqCap</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Activity_Inner</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Activity_Evac</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Activity_RegEv</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Activity_Search</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_All</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Command" name="Command">
+        <bpmn:flowNodeRef>Event_Start</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Activity_ReqCep</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_CepReceived</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Activity_Zones</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Activity_Safety</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Activity_Register</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Activity_Select</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Activity_ReqPolice</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Activity_Clear</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Activity_Handover</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_End</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Event_Start" name="Evacuation ordered">
+      <bpmn:outgoing>Flow_Start</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_Start" messageRef="Message_Evac" />
+    </bpmn:startEvent>
+    <bpmn:sendTask id="Activity_ReqCep" name="Request fire and traffic data from CEP">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="request_cep_situation" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Start</bpmn:incoming>
+      <bpmn:outgoing>Flow_0</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:intermediateCatchEvent id="Event_CepReceived" name="Situation picture received">
+      <bpmn:incoming>Flow_0</bpmn:incoming>
+      <bpmn:outgoing>Flow_0b</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_Situation" messageRef="Message_Situation" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:serviceTask id="Activity_Zones" name="Define zones from fire boundaries">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="define_zones" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0b</bpmn:incoming>
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_Safety" name="Assess crew safety (LACES)">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="assess_crew_safety" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_Register" name="Create missing persons register">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="create_missing_register" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_Select" name="Select reception center and routes">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="select_reception_center" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_3b</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_ReqPolice" name="Request outer cordon from police">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="request_police_cordon" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_3b</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_ReqCap" name="Reserve reception capacity">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="reserve_reception_capacity" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_Inner" name="Establish inner cordon">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="establish_inner_cordon" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_Evac" name="Evacuate citizens by sector">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="evacuate_citizens" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:incoming>Flow_Loop</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_RegEv" name="Register evacuated and log property entries">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="register_evacuated" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_Search" name="Search for remaining persons">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="search_remaining_persons" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_Loop</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_Clear" name="Confirm zone cleared">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="confirm_zone_cleared" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_9</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_Handover" name="Hand over registers and evidence to police">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="handover_to_police" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_9</bpmn:incoming>
+      <bpmn:outgoing>Flow_End</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_All">
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+      <bpmn:outgoing>Flow_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="Event_End" name="Evacuation completed">
+      <bpmn:incoming>Flow_End</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:subProcess id="Subprocess_Traffic" name="Monitor fire spread and road conditions" triggeredByEvent="true">
+      <bpmn:startEvent id="Event_SubStart" name="Fire boundary crossed or route blocked" isInterrupting="false">
+        <bpmn:outgoing>Flow_S1</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="MessageEventDefinition_Blocked" messageRef="Message_Blocked" />
+      </bpmn:startEvent>
+      <bpmn:serviceTask id="Activity_UpdRoutes" name="Update zones and evacuation routes">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="update_zones_and_routes" />
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_S1</bpmn:incoming>
+        <bpmn:outgoing>Flow_S2</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="Activity_NotifyTeams" name="Notify field teams and police">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="notify_field_teams" />
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_S2</bpmn:incoming>
+        <bpmn:outgoing>Flow_S3</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="Event_SubEnd" name="Routes updated">
+        <bpmn:incoming>Flow_S3</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_S1" sourceRef="Event_SubStart" targetRef="Activity_UpdRoutes" />
+      <bpmn:sequenceFlow id="Flow_S2" sourceRef="Activity_UpdRoutes" targetRef="Activity_NotifyTeams" />
+      <bpmn:sequenceFlow id="Flow_S3" sourceRef="Activity_NotifyTeams" targetRef="Event_SubEnd" />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="Subprocess_Crew" name="Monitor crew safety" triggeredByEvent="true">
+      <bpmn:startEvent id="Event_CrewStart" name="Crew safety threat detected" isInterrupting="false">
+        <bpmn:outgoing>Flow_C1</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="MessageEventDefinition_Crew" messageRef="Message_Crew" />
+      </bpmn:startEvent>
+      <bpmn:serviceTask id="Activity_Withdraw" name="Order crews to withdraw to safety zones">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="withdraw_crews_to_safety_zones" />
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_C1</bpmn:incoming>
+        <bpmn:outgoing>Flow_C2</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="Event_CrewEnd" name="Crews warned">
+        <bpmn:incoming>Flow_C2</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_C1" sourceRef="Event_CrewStart" targetRef="Activity_Withdraw" />
+      <bpmn:sequenceFlow id="Flow_C2" sourceRef="Activity_Withdraw" targetRef="Event_CrewEnd" />
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="Flow_Start" sourceRef="Event_Start" targetRef="Activity_ReqCep" />
+    <bpmn:sequenceFlow id="Flow_0" sourceRef="Activity_ReqCep" targetRef="Event_CepReceived" />
+    <bpmn:sequenceFlow id="Flow_0b" sourceRef="Event_CepReceived" targetRef="Activity_Zones" />
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="Activity_Zones" targetRef="Activity_Safety" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Activity_Safety" targetRef="Activity_Register" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Activity_Register" targetRef="Activity_Select" />
+    <bpmn:sequenceFlow id="Flow_3b" sourceRef="Activity_Select" targetRef="Activity_ReqPolice" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Activity_ReqPolice" targetRef="Activity_ReqCap" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Activity_ReqCap" targetRef="Activity_Inner" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Activity_Inner" targetRef="Activity_Evac" />
+    <bpmn:sequenceFlow id="Flow_Loop" sourceRef="Activity_Search" targetRef="Activity_Evac" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Activity_Evac" targetRef="Activity_RegEv" />
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Activity_RegEv" targetRef="Gateway_All" />
+    <bpmn:sequenceFlow id="Flow_No" name="persons missing" sourceRef="Gateway_All" targetRef="Activity_Search">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=allAccountedFor = false</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Yes" name="all persons accounted for" sourceRef="Gateway_All" targetRef="Activity_Clear">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=allAccountedFor = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="Activity_Clear" targetRef="Activity_Handover" />
+    <bpmn:sequenceFlow id="Flow_End" sourceRef="Activity_Handover" targetRef="Event_End" />
+  </bpmn:process>
+  <bpmn:process id="Process_Police" isExecutable="false" />
+  <bpmn:process id="Process_Reception" isExecutable="false" />
+  <bpmn:process id="Process_Cep" isExecutable="false" />
+  <bpmn:message id="Message_Evac" name="EvacuationOrdered" />
+  <bpmn:message id="Message_Blocked" name="FireSituationChanged">
+    <bpmn:extensionElements>
+      <zeebe:subscription correlationKey="=incidentId" />
+    </bpmn:extensionElements>
+  </bpmn:message>
+  <bpmn:message id="Message_Situation" name="FireTrafficSituation">
+    <bpmn:extensionElements>
+      <zeebe:subscription correlationKey="=incidentId" />
+    </bpmn:extensionElements>
+  </bpmn:message>
+  <bpmn:message id="Message_Crew" name="CrewSafetyThreat">
+    <bpmn:extensionElements>
+      <zeebe:subscription correlationKey="=incidentId" />
+    </bpmn:extensionElements>
+  </bpmn:message>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_Evacuation">
+      <bpmndi:BPMNShape id="Participant_Evacuation_di" bpmnElement="Participant_Evacuation" isHorizontal="true">
+        <dc:Bounds x="322" y="300" width="2030" height="820" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Monitoring_di" bpmnElement="Lane_Monitoring" isHorizontal="true">
+        <dc:Bounds x="352" y="820" width="2000" height="300" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Field_di" bpmnElement="Lane_Field" isHorizontal="true">
+        <dc:Bounds x="352" y="540" width="2000" height="280" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Command_di" bpmnElement="Lane_Command" isHorizontal="true">
+        <dc:Bounds x="352" y="300" width="2000" height="240" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_Start_di" bpmnElement="Event_Start">
+        <dc:Bounds x="392" y="402" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="383" y="445" width="55" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_ReqCep_di" bpmnElement="Activity_ReqCep">
+        <dc:Bounds x="480" y="380" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_CepReceived_di" bpmnElement="Event_CepReceived">
+        <dc:Bounds x="620" y="402" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="599" y="365" width="79" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_Zones_di" bpmnElement="Activity_Zones">
+        <dc:Bounds x="710" y="380" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_Safety_di" bpmnElement="Activity_Safety">
+        <dc:Bounds x="850" y="380" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_Register_di" bpmnElement="Activity_Register">
+        <dc:Bounds x="990" y="380" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_Select_di" bpmnElement="Activity_Select">
+        <dc:Bounds x="1130" y="380" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_ReqPolice_di" bpmnElement="Activity_ReqPolice">
+        <dc:Bounds x="1270" y="380" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_ReqCap_di" bpmnElement="Activity_ReqCap">
+        <dc:Bounds x="1410" y="620" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_Inner_di" bpmnElement="Activity_Inner">
+        <dc:Bounds x="1550" y="620" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_Evac_di" bpmnElement="Activity_Evac">
+        <dc:Bounds x="1690" y="620" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_RegEv_di" bpmnElement="Activity_RegEv">
+        <dc:Bounds x="1830" y="620" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_Search_di" bpmnElement="Activity_Search">
+        <dc:Bounds x="1950" y="720" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_Clear_di" bpmnElement="Activity_Clear">
+        <dc:Bounds x="1950" y="380" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_Handover_di" bpmnElement="Activity_Handover">
+        <dc:Bounds x="2090" y="380" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_All_di" bpmnElement="Gateway_All" isMarkerVisible="true">
+        <dc:Bounds x="1975" y="635" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_End_di" bpmnElement="Event_End">
+        <dc:Bounds x="2232" y="402" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2223" y="445" width="55" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Subprocess_Traffic_di" bpmnElement="Subprocess_Traffic" isExpanded="true">
+        <dc:Bounds x="690" y="900" width="440" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_SubStart_di" bpmnElement="Event_SubStart">
+        <dc:Bounds x="720" y="982" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="698" y="938" width="80" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_UpdRoutes_di" bpmnElement="Activity_UpdRoutes">
+        <dc:Bounds x="790" y="960" width="110" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_NotifyTeams_di" bpmnElement="Activity_NotifyTeams">
+        <dc:Bounds x="930" y="960" width="110" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_SubEnd_di" bpmnElement="Event_SubEnd">
+        <dc:Bounds x="1070" y="982" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1049" y="1022" width="78" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_S1_di" bpmnElement="Flow_S1">
+        <di:waypoint x="756" y="1000" />
+        <di:waypoint x="790" y="1000" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_S2_di" bpmnElement="Flow_S2">
+        <di:waypoint x="900" y="1000" />
+        <di:waypoint x="930" y="1000" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_S3_di" bpmnElement="Flow_S3">
+        <di:waypoint x="1040" y="1000" />
+        <di:waypoint x="1070" y="1000" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Subprocess_Crew_di" bpmnElement="Subprocess_Crew" isExpanded="true">
+        <dc:Bounds x="1160" y="900" width="266" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_CrewStart_di" bpmnElement="Event_CrewStart">
+        <dc:Bounds x="1180" y="982" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1155" y="946" width="90" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_Withdraw_di" bpmnElement="Activity_Withdraw">
+        <dc:Bounds x="1240" y="960" width="110" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_CrewEnd_di" bpmnElement="Event_CrewEnd">
+        <dc:Bounds x="1370" y="982" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1353" y="1022" width="71" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_C1_di" bpmnElement="Flow_C1">
+        <di:waypoint x="1216" y="1000" />
+        <di:waypoint x="1240" y="1000" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_C2_di" bpmnElement="Flow_C2">
+        <di:waypoint x="1350" y="1000" />
+        <di:waypoint x="1370" y="1000" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Start_di" bpmnElement="Flow_Start">
+        <di:waypoint x="428" y="420" />
+        <di:waypoint x="480" y="420" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0_di" bpmnElement="Flow_0">
+        <di:waypoint x="580" y="420" />
+        <di:waypoint x="620" y="420" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0b_di" bpmnElement="Flow_0b">
+        <di:waypoint x="656" y="420" />
+        <di:waypoint x="710" y="420" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="810" y="420" />
+        <di:waypoint x="850" y="420" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="950" y="420" />
+        <di:waypoint x="990" y="420" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="1090" y="420" />
+        <di:waypoint x="1130" y="420" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3b_di" bpmnElement="Flow_3b">
+        <di:waypoint x="1230" y="420" />
+        <di:waypoint x="1270" y="420" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="1370" y="420" />
+        <di:waypoint x="1390" y="420" />
+        <di:waypoint x="1390" y="660" />
+        <di:waypoint x="1410" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="1510" y="660" />
+        <di:waypoint x="1550" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="1650" y="660" />
+        <di:waypoint x="1690" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="1790" y="660" />
+        <di:waypoint x="1830" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_8_di" bpmnElement="Flow_8">
+        <di:waypoint x="1930" y="660" />
+        <di:waypoint x="1975" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Yes_di" bpmnElement="Flow_Yes">
+        <di:waypoint x="2000" y="635" />
+        <di:waypoint x="2000" y="460" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1926" y="496" width="67" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_No_di" bpmnElement="Flow_No">
+        <di:waypoint x="2000" y="685" />
+        <di:waypoint x="2000" y="720" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1910" y="703" width="80" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Loop_di" bpmnElement="Flow_Loop">
+        <di:waypoint x="1950" y="760" />
+        <di:waypoint x="1770" y="760" />
+        <di:waypoint x="1770" y="700" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_9_di" bpmnElement="Flow_9">
+        <di:waypoint x="2050" y="420" />
+        <di:waypoint x="2090" y="420" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_End_di" bpmnElement="Flow_End">
+        <di:waypoint x="2190" y="420" />
+        <di:waypoint x="2232" y="420" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Participant_Police_di" bpmnElement="Participant_Police" isHorizontal="true">
+        <dc:Bounds x="322" y="60" width="2030" height="110" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Participant_Reception_di" bpmnElement="Participant_Reception" isHorizontal="true">
+        <dc:Bounds x="1440" y="1190" width="912" height="100" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Participant_Cep_di" bpmnElement="Participant_Cep" isHorizontal="true">
+        <dc:Bounds x="322" y="1190" width="1098" height="100" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_Laces_di" bpmnElement="TextAnnotation_Laces">
+        <dc:Bounds x="850" y="302" width="130" height="74" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_Missing_di" bpmnElement="TextAnnotation_Missing">
+        <dc:Bounds x="990" y="302" width="150" height="74" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_Inner_di" bpmnElement="TextAnnotation_Inner">
+        <dc:Bounds x="1550" y="548" width="130" height="54" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_Evacuated_di" bpmnElement="TextAnnotation_Evacuated">
+        <dc:Bounds x="1830" y="548" width="140" height="54" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_Cep_di" bpmnElement="TextAnnotation_Cep">
+        <dc:Bounds x="690" y="830" width="240" height="55" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_Situation_di" bpmnElement="TextAnnotation_Situation">
+        <dc:Bounds x="470" y="305" width="220" height="60" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_Crew_di" bpmnElement="TextAnnotation_Crew">
+        <dc:Bounds x="1160" y="830" width="266" height="55" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_0lvyx31_di" bpmnElement="TextAnnotation_0lvyx31">
+        <dc:Bounds x="2050" y="638" width="101" height="43" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Msg_Start_di" bpmnElement="Msg_Start">
+        <di:waypoint x="410" y="170" />
+        <di:waypoint x="410" y="402" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="426" y="230" width="55" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Msg_CepRequest_di" bpmnElement="Msg_CepRequest">
+        <di:waypoint x="530" y="460" />
+        <di:waypoint x="530" y="1190" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="437" y="1135" width="81" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Msg_CepSituation_di" bpmnElement="Msg_CepSituation">
+        <di:waypoint x="638" y="1190" />
+        <di:waypoint x="638" y="438" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="653" y="1135" width="71" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Msg_EarlyWarning_di" bpmnElement="Msg_EarlyWarning">
+        <di:waypoint x="322" y="1240" />
+        <di:waypoint x="280" y="1240" />
+        <di:waypoint x="280" y="115" />
+        <di:waypoint x="322" y="115" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="151" y="640" width="119" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Msg_Cordon_di" bpmnElement="Msg_Cordon">
+        <di:waypoint x="1320" y="380" />
+        <di:waypoint x="1320" y="170" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1330" y="230" width="70" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Msg_Capacity_di" bpmnElement="Msg_Capacity">
+        <di:waypoint x="1460" y="700" />
+        <di:waypoint x="1460" y="1190" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1468" y="1140" width="85" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Msg_Transport_di" bpmnElement="Msg_Transport">
+        <di:waypoint x="1740" y="700" />
+        <di:waypoint x="1740" y="1190" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1757" y="1140" width="56" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Msg_Search_di" bpmnElement="Msg_Search">
+        <di:waypoint x="2050" y="760" />
+        <di:waypoint x="2290" y="760" />
+        <di:waypoint x="2290" y="170" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2197" y="225" width="82" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Msg_Handover_di" bpmnElement="Msg_Handover">
+        <di:waypoint x="2140" y="380" />
+        <di:waypoint x="2140" y="170" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2017" y="225" width="106" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Msg_Blocked_di" bpmnElement="Msg_Blocked">
+        <di:waypoint x="738" y="1190" />
+        <di:waypoint x="738" y="1018" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Msg_CrewThreat_di" bpmnElement="Msg_CrewThreat">
+        <di:waypoint x="1198" y="1190" />
+        <di:waypoint x="1198" y="1018" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1206" y="1135" width="90" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_Laces_di" bpmnElement="Association_Laces">
+        <di:waypoint x="915" y="376" />
+        <di:waypoint x="915" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_Missing_di" bpmnElement="Association_Missing">
+        <di:waypoint x="1065" y="376" />
+        <di:waypoint x="1065" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_Inner_di" bpmnElement="Association_Inner">
+        <di:waypoint x="1600" y="602" />
+        <di:waypoint x="1600" y="620" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_Evacuated_di" bpmnElement="Association_Evacuated">
+        <di:waypoint x="1880" y="602" />
+        <di:waypoint x="1880" y="620" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_Cep_di" bpmnElement="Association_Cep">
+        <di:waypoint x="810" y="885" />
+        <di:waypoint x="810" y="900" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_Situation_di" bpmnElement="Association_Situation">
+        <di:waypoint x="530" y="365" />
+        <di:waypoint x="530" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_Crew_di" bpmnElement="Association_Crew">
+        <di:waypoint x="1290" y="885" />
+        <di:waypoint x="1290" y="900" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_1dv19mb_di" bpmnElement="Association_1dv19mb">
+        <di:waypoint x="2025" y="660" />
+        <di:waypoint x="2050" y="659" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

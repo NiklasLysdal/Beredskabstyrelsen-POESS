@@ -32,7 +32,7 @@ def normalize_event_payload(data):
     event_name = payload.get("event") or payload.get("activity") or payload.get("name") or "unknown"
     timestamp = payload.get("timestamp") or utc_now_iso()
     case_id = payload.get("case_id") or payload.get("case") or payload.get("trace_id") or "UNKNOWN_CASE"
-    order_id = payload.get("order_id")
+    incident_id = payload.get("incident_id") or payload.get("order_id")
     role = payload.get("role") or payload.get("user") or payload.get("actor") or "system"
     error = payload.get("error")
     payload_data = payload.get("payload") or {}
@@ -45,7 +45,7 @@ def normalize_event_payload(data):
 
     return {
         "case_id": str(case_id),
-        "order_id": str(order_id) if order_id is not None else "",
+        "incident_id": str(incident_id) if incident_id is not None else "",
         "event": str(event_name),
         "timestamp": str(timestamp),
         "role": str(role),
@@ -122,8 +122,8 @@ def build_xes(events):
             ET.SubElement(event_el, "date", {"key": "time:timestamp", "value": str(event.get("timestamp", utc_now_iso()))})
             ET.SubElement(event_el, "string", {"key": "org:resource", "value": str(event.get("role", "system"))})
 
-            if event.get("order_id"):
-                ET.SubElement(event_el, "string", {"key": "order_id", "value": str(event["order_id"])})
+            if event.get("incident_id"):
+                ET.SubElement(event_el, "string", {"key": "incident_id", "value": str(event["incident_id"])})
             if event.get("case_id"):
                 ET.SubElement(event_el, "string", {"key": "case_id", "value": str(event["case_id"])})
             if event.get("error"):

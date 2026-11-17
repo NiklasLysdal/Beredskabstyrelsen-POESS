@@ -1,4 +1,4 @@
-@App:name("OrderFoodAppDEMO")
+@App:name("EvacuationApp")
 
 /* -----------------------------
    INPUT STREAMS
@@ -9,7 +9,14 @@
     receiver.url="http://0.0.0.0:7071/customer",
     @map(type='json')
 )
-define stream CustomerStream(order_id string, action string);
+define stream CustomerStream(
+    incident_id string,
+    action string,
+    all_accounted_for bool,
+    case_id string,
+    situation string,
+    threat string
+);
 
 @source(
     type='http',
@@ -17,7 +24,7 @@ define stream CustomerStream(order_id string, action string);
     @map(type='json')
 )
 define stream MiddlemanStream(
-    order_id string,
+    incident_id string,
     case_id string,
     event string,
     timestamp string,
@@ -32,35 +39,38 @@ define stream MiddlemanStream(
 
 @sink(
     type='http',
-    publisher.url='http://communication:5001/place_order',
+    publisher.url='http://communication:5001/start_evacuation',
     method='POST',
     @map(type='json')
 )
-define stream PlaceOrderOut(order_id string);
+define stream EvacuationOrderOut(
+    incident_id string,
+    all_accounted_for bool
+);
 
 @sink(
     type='http',
-    publisher.url='http://communication:5001/receive_order',
+    publisher.url='http://communication:5001/fire_situation_changed',
     method='POST',
     @map(type='json')
 )
-define stream ReceiveOrderOut(order_id string);
+define stream FireSituationChangedOut(
+    incident_id string,
+    case_id string,
+    situation string
+);
 
 @sink(
     type='http',
-    publisher.url='http://communication:5001/cancel_order',
+    publisher.url='http://communication:5001/crew_safety_threat',
     method='POST',
     @map(type='json')
 )
-define stream CancelOrderOut(order_id string);
-
-@sink(
-    type='http',
-    publisher.url='http://communication:5001/pay_order',
-    method='POST',
-    @map(type='json')
-)
-define stream PayOrderOut(order_id string);
+define stream CrewSafetyThreatOut(
+    incident_id string,
+    case_id string,
+    threat string
+);
 
 /* -----------------------------
    LOGGER OUTPUT
@@ -75,7 +85,7 @@ define stream PayOrderOut(order_id string);
 define stream Logging(
     event string,
     case_id string,
-    order_id string,
+    incident_id string,
     timestamp string,
     role string,
     payload string,
@@ -83,7 +93,7 @@ define stream Logging(
 );
 
 define stream RoutingError(
-    order_id string,
+    incident_id string,
     error string
 );
 
@@ -91,34 +101,27 @@ define stream RoutingError(
    CUSTOMER EVENT ROUTING
    ----------------------------- */
 
-from CustomerStream[action == "PlaceOrder" and not(order_id is null)]
-select order_id
-insert into PlaceOrderOut;
+from CustomerStream[action == "EvacuationOrdered" and not(incident_id is null)]
+select incident_id, all_accounted_for
+insert into EvacuationOrderOut;
 
-from CustomerStream[action == "ReceiveOrder" and not(order_id is null)]
-select order_id
-insert into ReceiveOrderOut;
+from CustomerStream[action == "FireSituationChanged" and not(incident_id is null)]
+select incident_id, case_id, situation
+insert into FireSituationChangedOut;
 
-from CustomerStream[action == "CancelOrder" and not(order_id is null)]
-select order_id
-insert into CancelOrderOut;
-
-from CustomerStream[action == "PayOrder" and not(order_id is null)]
-select order_id
-insert into PayOrderOut;
+from CustomerStream[action == "CrewSafetyThreat" and not(incident_id is null)]
+select incident_id, case_id, threat
+insert into CrewSafetyThreatOut;
 
 /* Invalid customer input is logged without calling Camunda. */
-from CustomerStream[order_id is null or action is null]
-select order_id, "order_id and action are required" as error
+from CustomerStream[incident_id is null or action is null]
+select incident_id, "incident_id and action are required" as error
 insert into RoutingError;
 
 from CustomerStream[
-    action != "PlaceOrder" and
-    action != "ReceiveOrder" and
-    action != "CancelOrder" and
-    action != "PayOrder"
+    action != "EvacuationOrdered"
 ]
-select order_id, "unsupported action" as error
+select incident_id, "unsupported action" as error
 insert into RoutingError;
 
 /* -----------------------------
@@ -128,7 +131,7 @@ insert into RoutingError;
 from MiddlemanStream
 select event,
        case_id,
-       order_id,
+       incident_id,
        timestamp,
        role,
        payload,
@@ -138,7 +141,7 @@ insert into Logging;
 from RoutingError
 select "Error" as event,
        "UNKNOWN_CASE" as case_id,
-       order_id,
+       incident_id,
        convert(currentTimeMillis(), "string") as timestamp,
        "siddhi" as role,
        "" as payload,

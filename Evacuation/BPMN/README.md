@@ -1,8 +1,12 @@
-# BPMN Order Processing Demo
+# BPMN Evacuation and Cordon
 
 This folder contains the BPMN-based implementation of the project. It demonstrates how process logic can be modeled and orchestrated using Camunda Zeebe together with a Siddhi event-processing layer and Python-based integration services.
 
-The setup is intentionally lightweight and acts as a foundation for extension into more advanced process-driven systems.
+The setup runs the evacuation and cordon process in
+`bpmn/evacuation_cordon_BRS_v3.bpmn`. The process starts when an
+`EvacuationOrdered` event is received, requests a fire/traffic situation,
+coordinates cordons and reception capacity, evacuates citizens by sector,
+and completes after all persons are accounted for.
 
 ---
 
@@ -48,7 +52,8 @@ The communication layer forwards workflow-relevant messages to the BPMN engine, 
 ### Communication service
 Location: `BPMN/deployer`
 
-This component acts as the main interface between the event-driven layer and the BPMN engine. It handles communication, process control, and service coordination.
+This component starts evacuation cases, publishes situation and safety messages,
+and supplies workers for the executable evacuation tasks.
 
 ### Siddhi runtime
 Location: `BPMN/siddhi`
@@ -104,7 +109,7 @@ docker compose down
 
 The repository includes a simple event-stream helper under `BPMN/event_streams`.
 
-Example:
+Example from the repository root:
 
 ```powershell
 python .\event_streams\send_stream.py .\event_streams\test_events.jsonl
@@ -117,6 +122,18 @@ python .\event_streams\send_stream.py .\event_streams\test_events.jsonl --dry-ru
 ```
 
 For more details, see [event_streams/README.md](event_streams/README.md).
+
+The deployed communication service exposes these event endpoints:
+
+- `POST /start_evacuation` with `{"incident_id":"incident-001"}`
+- `POST /situation` with `{"incident_id":"incident-001","situation":{...}}`
+- `POST /fire_situation_changed` with `{"incident_id":"incident-001","situation":{...}}`
+- `POST /crew_safety_threat` with `{"incident_id":"incident-001","threat":{...}}`
+
+The event stream helper sends evacuation orders and situation events to Siddhi,
+which routes them to the corresponding communication endpoints. The included
+`test_events.jsonl` covers normal completion, the missing-person loop, fire
+boundary updates, and crew safety threats.
 
 ---
 

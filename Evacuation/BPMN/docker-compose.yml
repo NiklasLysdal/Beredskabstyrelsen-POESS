@@ -16,7 +16,8 @@ services:
       - "7071:7071"
       - "7072:7072"
       - "7073:7073"
-      - "9390:9390"   # optional dashboard
+      - "9090:9090"   # Siddhi HTTP management console
+      - "9443:9443"   # Siddhi HTTPS management console
 
   logging-service:
     build: ./logging_service
@@ -36,13 +37,14 @@ services:
     environment:
       CAMUNDA_SECURITY_AUTHENTICATION_UNPROTECTEDAPI: "true"
       CAMUNDA_SECURITY_AUTHORIZATIONS_ENABLED: "false"
-      ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_CLASSNAME: io.camunda.zeebe.exporter.ElasticsearchExporter
-      ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_ARGS_URL: http://elasticsearch:9200
+      CAMUNDA_DATA_SECONDARY_STORAGE_ELASTICSEARCH_URL: http://elasticsearch:9200
+      CAMUNDA_DATA_SECONDARY_STORAGE_ELASTICSEARCH_CLUSTERNAME: elasticsearch
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.3
     container_name: elasticsearch
     environment:
       discovery.type: single-node
@@ -62,13 +64,15 @@ services:
     container_name: operate
     ports:
       - "8081:8080"
+    environment:
+      CAMUNDA_SECURITY_AUTHENTICATION_UNPROTECTEDAPI: "true"
+      CAMUNDA_SECURITY_AUTHORIZATIONS_ENABLED: "false"
+      CAMUNDA_OPERATE_ZEEBE_GATEWAYADDRESS: zeebe:26500
+      CAMUNDA_OPERATE_ELASTICSEARCH_URL: http://elasticsearch:9200
+      CAMUNDA_DATA_SECONDARY_STORAGE_ELASTICSEARCH_URL: http://elasticsearch:9200
     depends_on:
       zeebe:
         condition: service_started
       elasticsearch:
         condition: service_healthy
-    environment:
-      CAMUNDA_OPERATE_ZEEBE_GATEWAYADDRESS: zeebe:26500
-      CAMUNDA_OPERATE_ELASTICSEARCH_URL: http://elasticsearch:9200
-      CAMUNDA_DATA_SECONDARY_STORAGE_ELASTICSEARCH_URL: http://elasticsearch:9200
 

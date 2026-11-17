@@ -1,5 +1,8 @@
-{"order_id":"order-001","action":"PlaceOrder"}
-{"order_id":"order-001","action":"ReceiveOrder"}
-{"order_id":"order-001","action":"PayOrder"}
-{"order_id":"order-002","action":"PlaceOrder"}
-{"order_id":"order-002","action":"CancelOrder"}
+{"incident_id":"incident-normal","action":"EvacuationOrdered","all_accounted_for":true}
+{"incident_id":"incident-missing","action":"EvacuationOrdered","all_accounted_for":false}
+{"incident_id":"incident-missing","action":"CrewSafetyThreat","threat":"smoke reached the field team"}
+{"incident_id":"incident-missing","action":"FireSituationChanged","situation":"fire boundary crossed the eastern road"}
+{"incident_id":"incident-update","action":"EvacuationOrdered","all_accounted_for":true}
+{"incident_id":"incident-update","action":"FireSituationChanged","situation":"evacuation route blocked"}
+{"incident_id":"incident-safety","action":"EvacuationOrdered","all_accounted_for":true}
+{"incident_id":"incident-safety","action":"CrewSafetyThreat","threat":"crew safety perimeter breached"}

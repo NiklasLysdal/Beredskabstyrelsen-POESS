@@ -1,4 +1,4 @@
-"""Send an ordered event stream to the Siddhi customer input endpoint."""
+"""Send an ordered evacuation event stream to the Siddhi input endpoint."""
 
 import argparse
 import json
@@ -10,10 +10,9 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 SUPPORTED_ACTIONS = {
-    "PlaceOrder",
-    "ReceiveOrder",
-    "CancelOrder",
-    "PayOrder",
+    "EvacuationOrdered",
+    "FireSituationChanged",
+    "CrewSafetyThreat",
 }
 
 
@@ -33,11 +32,16 @@ def load_events(path):
     for index, event in enumerate(events, start=1):
         if not isinstance(event, dict):
             raise ValueError(f"Event {index} must be a JSON object")
-        if not isinstance(event.get("order_id"), str) or not event["order_id"]:
-            raise ValueError(f"Event {index} must have a non-empty string order_id")
+        if not isinstance(event.get("incident_id"), str) or not event["incident_id"]:
+            raise ValueError(f"Event {index} must have a non-empty string incident_id")
         if event.get("action") not in SUPPORTED_ACTIONS:
             actions = ", ".join(sorted(SUPPORTED_ACTIONS))
             raise ValueError(f"Event {index} has an unsupported action; use: {actions}")
+
+        event.setdefault("all_accounted_for", True)
+        event.setdefault("case_id", "")
+        event.setdefault("situation", "")
+        event.setdefault("threat", "")
 
     return events
 
@@ -98,7 +102,7 @@ def main():
 
     for index, event in enumerate(events, start=1):
         if args.dry_run:
-            print(f"[{index}/{total}] {event['action']} {event['order_id']}")
+            print(f"[{index}/{total}] {event['action']} {event['incident_id']}")
         else:
             try:
                 status, response = send_event(args.url, event, args.timeout)
@@ -106,7 +110,7 @@ def main():
                 print(f"[{index}/{total}] failed: {error}", file=sys.stderr)
                 return 1
             print(
-                f"[{index}/{total}] {event['action']} {event['order_id']} "
+                f"[{index}/{total}] {event['action']} {event['incident_id']} "
                 f"-> HTTP {status} {response}"
             )
 
