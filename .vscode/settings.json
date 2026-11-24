@@ -1,17 +1,46 @@
+
 {
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
   "python.analysis.extraPaths": [
-    "${workspaceFolder}/DCR/microservice",
-    "${workspaceFolder}/DCR/logging_service",
-    "${workspaceFolder}/BPMN/deployer",
-    "${workspaceFolder}/BPMN/logging_service",
-    "${workspaceFolder}/BPMN/event_streams"
+    "${workspaceFolder}/Action plan/DCR/microservice",
+    "${workspaceFolder}/Action plan/DCR/logging_service",
+    "${workspaceFolder}/Action plan/DCR/event_streams",
+    "${workspaceFolder}/FieldOperations/DCR/microservice",
+    "${workspaceFolder}/FieldOperations/DCR/logging_service",
+    "${workspaceFolder}/FieldOperations/BPMN/deployer",
+    "${workspaceFolder}/FieldOperations/BPMN/logging_service",
+    "${workspaceFolder}/FieldOperations/BPMN/event_streams",
+    "${workspaceFolder}/Evacuation/BPMN/deployer",
+    "${workspaceFolder}/Evacuation/BPMN/logging_service",
+    "${workspaceFolder}/Evacuation/BPMN/event_streams",
+    "${workspaceFolder}/Mobilization/BPMN/deployer",
+    "${workspaceFolder}/Mobilization/BPMN/logging_service",
+    "${workspaceFolder}/Mobilization/BPMN/event_streams",
+    "${workspaceFolder}/Warning/DCR/microservice",
+    "${workspaceFolder}/Warning/DCR/logging_service",
+    "${workspaceFolder}/Warning/BPMN/deployer",
+    "${workspaceFolder}/Warning/BPMN/logging_service",
+    "${workspaceFolder}/Warning/BPMN/event_streams"
   ],
   "python.autoComplete.extraPaths": [
-    "${workspaceFolder}/DCR/microservice",
-    "${workspaceFolder}/DCR/logging_service",
-    "${workspaceFolder}/BPMN/deployer",
-    "${workspaceFolder}/BPMN/logging_service",
-    "${workspaceFolder}/BPMN/event_streams"
+    "${workspaceFolder}/Action plan/DCR/microservice",
+    "${workspaceFolder}/Action plan/DCR/logging_service",
+    "${workspaceFolder}/Action plan/DCR/event_streams",
+    "${workspaceFolder}/FieldOperations/DCR/microservice",
+    "${workspaceFolder}/FieldOperations/DCR/logging_service",
+    "${workspaceFolder}/FieldOperations/BPMN/deployer",
+    "${workspaceFolder}/FieldOperations/BPMN/logging_service",
+    "${workspaceFolder}/FieldOperations/BPMN/event_streams",
+    "${workspaceFolder}/Evacuation/BPMN/deployer",
+    "${workspaceFolder}/Evacuation/BPMN/logging_service",
+    "${workspaceFolder}/Evacuation/BPMN/event_streams",
+    "${workspaceFolder}/Mobilization/BPMN/deployer",
+    "${workspaceFolder}/Mobilization/BPMN/logging_service",
+    "${workspaceFolder}/Mobilization/BPMN/event_streams",
+    "${workspaceFolder}/Warning/DCR/microservice",
+    "${workspaceFolder}/Warning/DCR/logging_service",
+    "${workspaceFolder}/Warning/BPMN/deployer",
+    "${workspaceFolder}/Warning/BPMN/logging_service",
+    "${workspaceFolder}/Warning/BPMN/event_streams"
   ]
 }

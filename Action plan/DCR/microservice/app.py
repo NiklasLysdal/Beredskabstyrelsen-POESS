@@ -6,11 +6,31 @@ from enum import Enum
 from datetime import datetime, timezone
 
 class EventID(str, Enum):
-    PlaceOrder = "PlaceOrder"
-    ReceiveOrder = "ReceiveOrder"
-    CancelOrder = "CancelOrder"
-    PayOrder = "PayOrder"
-    GetAvailableActions = "GetAvailableActions"
+    ArriveOnScene = "ArriveOnScene"
+    SurveyForFire = "SurveyForFire"
+    IdentifySpreadingPaths = "IdentifySpreadingPaths"
+    DefineMMI = "DefineMMI"
+    ConductRiskAssessment = "ConductRiskAssessment"
+    ChangeInWindDirection = "ChangeInWindDirection"
+    EstablishLookouts = "EstablishLookouts"
+    EstablishAnchorPoint = "EstablishAnchorPoint"
+    EstablishSecureCommunicationSystem = "EstablishSecureCommunicationSystem"
+    EstablishEscapeRoutes = "EstablishEscapeRoutes"
+    DistanceToFire = "DistanceToFire"
+    DrawUnitsOnMap = "DrawUnitsOnMap"
+    SetupSensors = "SetupSensors"
+    A7 = "A7" #Establish LACES.
+    Humidity = "Humidity"
+    InitiateDirectAttack = "InitiateDirectAttack"
+    ChooseAttackMethod = "ChooseAttackMethod"
+    InitiateIndirectAttack = "InitiateIndirectAttack"
+    BreachesControlLine = "BreachesControlLine"
+    EstablishControlLine = "EstablishControlLine"
+    EvacuateCrewToSafeZone = "EvacuateCrewToSafeZone"
+    OccursBehindCrew = "OccursBehindCrew"
+    FlameHeight = "FlameHeight"
+    StopDirectAttack = "StopDirectAttack"
+    StopIndirectAttack = "StopIndirectAttack"
 
 app = Flask(__name__)
 
@@ -21,17 +41,21 @@ def utc_now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 
-def send_callback_to_siddhi(order_id, case_id, event_name, dcr_result):
+def send_callback_to_siddhi(incident_id, case_id, event_name, dcr_result, value=None):
+    payload_dict = {
+        "enabledEvents": dcr_result.get("enabledEvents", []),
+        "status": "error" if dcr_result.get("error") else "success"
+    }
+    if value not in (None, ""):
+        payload_dict["value"] = value
+
     payload = {
-        "order_id": order_id,
+        "incident_id": incident_id,
         "case_id": case_id,
         "event": event_name,
         "timestamp": utc_now_iso(),
         "role": "microservice",
-        "payload": json.dumps({
-            "enabledEvents": dcr_result.get("enabledEvents", []),
-            "status": "error" if dcr_result.get("error") else "success"
-        }),
+        "payload": json.dumps(payload_dict),
         "error": ""
     }
 
@@ -40,49 +64,50 @@ def send_callback_to_siddhi(order_id, case_id, event_name, dcr_result):
 
     requests.post(SIDDHI_CALLBACK_URL, json=payload)
 
-def process_event(order_id, case_id, event_name):
-    dcr_result = execute_event(case_id, event_name.value)
+
+def process_event(incident_id, case_id, event_name, data=None, value=None):
+    event_str = event_name.value if hasattr(event_name, 'value') else str(event_name)
+    dcr_result = execute_event(case_id, event_str, data=data, value=value)
     # always fetch the current enabled events so every callback tells siddhi what's possible next
     dcr_result["enabledEvents"] = get_enabled_events(case_id)
-    send_callback_to_siddhi(order_id, case_id, event_name.value, dcr_result) #required because siddhi doesn't wait for the response from dcr, so we need to send it manually
+    send_callback_to_siddhi(incident_id, case_id, event_str, dcr_result, value=value)
     return jsonify({"status": "ok"})
 
 
-@app.route("/place_order", methods=["POST"])
-def place_order():
+@app.route("/InitIncidentOut", methods=["POST"])
+def init_incident():
     print("[RAW BODY]", request.data)
     data = request.json
-    order_id = data["event"]["order_id"]
-    print(f"[PlaceOrder] Received order_id = {order_id}")
+    item = data[0] if isinstance(data, list) else data
+    incident_id = item["event"]["incident_id"]
+    action = item["event"].get("action")
+    if not action:
+        action = EventID.ArriveOnScene.value
+    payload = item["event"].get("payload", {})
+    value = item["event"].get("value")
 
-    # instantiate a new DCR case
-    case_id = create_case()
+    print(f"[InitIncident] Received incident_id = {incident_id}, action = {action}")
+    # instantiate a new DCR case and register it as a scenario with incident_id
+    case_id = create_case(incident_id)
+    return process_event(incident_id, case_id, action, data=payload, value=value)
 
-    return process_event(order_id, case_id, EventID.PlaceOrder)
 
-
-@app.route("/receive_order", methods=["POST"])
-def receive_order():
+@app.route("/ExecuteEventOut", methods=["POST"])
+def execute_event_route():
+    print("[RAW BODY]", request.data)
     data = request.json
-    order_id = data.get("order_id")
-    case_id = data.get("case_id")
-    return process_event(order_id, case_id, EventID.ReceiveOrder)
+    items = data if isinstance(data, list) else [data]
+    last_res = jsonify({"status": "ok"})
+    for item in items:
+        case_id = item["event"]["case_id"]
+        payload = item["event"].get("payload", {})
+        incident_id = item["event"]["incident_id"]
+        action = item["event"]["action"]
+        value = item["event"].get("value")
+        print(f"[ExecuteEvent] Received incident_id = {incident_id}, action = {action}, value = {value}")
+        last_res = process_event(incident_id, case_id, action, data=payload, value=value)
 
-
-@app.route("/cancel_order", methods=["POST"])
-def cancel_order():
-    data = request.json
-    order_id = data.get("order_id")
-    case_id = data.get("case_id")
-    return process_event(order_id, case_id, EventID.CancelOrder)
-
-
-@app.route("/pay_order", methods=["POST"])
-def pay_order():
-    data = request.json
-    order_id = data.get("order_id")
-    case_id = data.get("case_id")
-    return process_event(order_id, case_id, EventID.PayOrder)
+    return last_res
 
 
 @app.route("/enabled_events/<case_id>", methods=["GET"])
@@ -98,7 +123,7 @@ def get_available_actions():
     case_id = data.get("case_id")
     events = get_enabled_events(case_id)
     dcr_result = {"error": False, "message": "", "enabledEvents": events}
-    send_callback_to_siddhi(order_id, case_id, EventID.GetAvailableActions.value, dcr_result)
+    send_callback_to_siddhi(order_id, case_id, "GetAvailableActions", dcr_result)
     return jsonify({"status": "ok"})
 
 
