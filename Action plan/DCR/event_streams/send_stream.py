@@ -1,4 +1,4 @@
-"""Send an ordered event stream to the Siddhi input endpoint to simulate the Action Plan DCR process."""
+"""Send an ordered event & telemetry stream to Siddhi input endpoints to simulate the Action Plan To-Be DCR process."""
 
 import argparse
 import json
@@ -22,7 +22,7 @@ SUPPORTED_ACTIONS = {
     "EstablishEscapeRoutes",
     "DistanceToFire",
     "DrawUnitsOnMap",
-    "A7",
+    "SetupSensors",
     "Humidity",
     "InitiateDirectAttack",
     "ChooseAttackMethod",
@@ -32,14 +32,33 @@ SUPPORTED_ACTIONS = {
     "EvacuateCrewToSafeZone",
     "OccursBehindCrew",
     "FlameHeight",
+    "StopDirectAttack",
+    "StopIndirectAttack",
 }
 
-ENVIRONMENT_ACTIONS = {
-    "ChangeInWindDirection",
-    "Humidity",
-    "FlameHeight",
-    "OccursBehindCrew",
-}
+
+def resolve_stream_target(base_url, event):
+    """Determine which Siddhi HTTP endpoint and payload shape to use for an event."""
+    root = base_url.rsplit("/", 1)[0] if "/" in base_url else base_url
+    if "humidity" in event:
+        return f"{root}/humidity", f"humidity={event['humidity']}%", {
+            "incident_id": event["incident_id"],
+            "humidity": int(event["humidity"]),
+        }
+    if "wind_direction" in event:
+        return f"{root}/wind", f"wind_direction={event['wind_direction']}", {
+            "incident_id": event["incident_id"],
+            "wind_direction": str(event["wind_direction"]),
+        }
+
+    action = event["action"]
+    val = str(event.get("value", ""))
+    label = f"{action} (value={val})" if val else action
+    return f"{root}/actor", label, {
+        "incident_id": event["incident_id"],
+        "action": action,
+        "value": val,
+    }
 
 
 def load_events(path, validate_actions=True):
@@ -63,9 +82,15 @@ def load_events(path, validate_actions=True):
         if not incident_id or not isinstance(incident_id, str):
             raise ValueError(f"Event {index} must have a non-empty string 'incident_id'")
 
+        is_sensor = any(k in event for k in ("humidity", "wind_direction"))
+        if is_sensor:
+            continue
+
         action = event.get("action")
         if not action or not isinstance(action, str):
-            raise ValueError(f"Event {index} must have a non-empty string 'action'")
+            raise ValueError(
+                f"Event {index} must have either 'action' or one of ('humidity', 'wind_direction')"
+            )
 
         if validate_actions and action not in SUPPORTED_ACTIONS:
             actions = ", ".join(sorted(SUPPORTED_ACTIONS))
@@ -76,8 +101,8 @@ def load_events(path, validate_actions=True):
     return events
 
 
-def send_event(url, event, timeout):
-    body = json.dumps(event).encode("utf-8")
+def send_event(url, payload, timeout):
+    body = json.dumps(payload).encode("utf-8")
     request = Request(
         url,
         data=body,
@@ -91,18 +116,18 @@ def send_event(url, event, timeout):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Send an ordered JSON/JSONL event stream to Siddhi for the Action Plan DCR simulation."
+        description="Send an ordered JSON/JSONL event & sensor stream to Siddhi for the Action Plan DCR simulation."
     )
     parser.add_argument("file", type=Path, help="JSON array or JSONL event stream file")
     parser.add_argument(
         "--url",
         default=os.getenv("SIDDHI_URL", "http://localhost:7071/actor"),
-        help="Siddhi actor input endpoint (default: %(default)s)",
+        help="Base Siddhi input endpoint (default: %(default)s)",
     )
     parser.add_argument(
         "--delay",
         type=float,
-        default=0.5,
+        default=0.6,
         help="Seconds to wait between events (default: %(default)s)",
     )
     parser.add_argument(
@@ -136,26 +161,25 @@ def main():
     print(f"Loaded {total} event(s) from {args.file}")
 
     for index, event in enumerate(events, start=1):
-        action = event["action"]
         incident_id = event["incident_id"]
-        target_url = args.url
-        if action in ENVIRONMENT_ACTIONS and target_url.endswith("/actor"):
-            target_url = target_url[:-6] + "/environment"
+        target_url, label, payload = resolve_stream_target(args.url, event)
 
         if args.dry_run:
-            print(f"[{index}/{total}] {action} ({incident_id}) -> {target_url}")
+            print(f"[{index}/{total}] {label} ({incident_id}) -> {target_url}")
         else:
             try:
-                status, response = send_event(target_url, event, args.timeout)
+                status, response = send_event(target_url, payload, args.timeout)
             except (HTTPError, URLError, TimeoutError) as error:
                 print(f"[{index}/{total}] failed: {error}", file=sys.stderr)
                 return 1
             print(
-                f"[{index}/{total}] {action} ({incident_id}) -> HTTP {status} {response}"
+                f"[{index}/{total}] {label} ({incident_id}) -> {target_url} [HTTP {status}] {response}"
             )
 
         if index < total and args.delay:
-            time.sleep(args.delay)
+            # ArriveOnScene creates the case in DCR and calls back to Siddhi; give it time to complete
+            sleep_time = max(args.delay, 2.5) if event.get("action") == "ArriveOnScene" else args.delay
+            time.sleep(sleep_time)
 
     return 0
 

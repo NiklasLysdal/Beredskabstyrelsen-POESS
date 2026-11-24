@@ -18,7 +18,8 @@ class EventID(str, Enum):
     EstablishEscapeRoutes = "EstablishEscapeRoutes"
     DistanceToFire = "DistanceToFire"
     DrawUnitsOnMap = "DrawUnitsOnMap"
-    A7 = "A7"
+    SetupSensors = "SetupSensors"
+    A7 = "A7" #Establish LACES.
     Humidity = "Humidity"
     InitiateDirectAttack = "InitiateDirectAttack"
     ChooseAttackMethod = "ChooseAttackMethod"
@@ -28,6 +29,8 @@ class EventID(str, Enum):
     EvacuateCrewToSafeZone = "EvacuateCrewToSafeZone"
     OccursBehindCrew = "OccursBehindCrew"
     FlameHeight = "FlameHeight"
+    StopDirectAttack = "StopDirectAttack"
+    StopIndirectAttack = "StopIndirectAttack"
 
 app = Flask(__name__)
 
@@ -38,17 +41,21 @@ def utc_now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 
-def send_callback_to_siddhi(incident_id, case_id, event_name, dcr_result):
+def send_callback_to_siddhi(incident_id, case_id, event_name, dcr_result, value=None):
+    payload_dict = {
+        "enabledEvents": dcr_result.get("enabledEvents", []),
+        "status": "error" if dcr_result.get("error") else "success"
+    }
+    if value not in (None, ""):
+        payload_dict["value"] = value
+
     payload = {
         "incident_id": incident_id,
         "case_id": case_id,
         "event": event_name,
         "timestamp": utc_now_iso(),
         "role": "microservice",
-        "payload": json.dumps({
-            "enabledEvents": dcr_result.get("enabledEvents", []),
-            "status": "error" if dcr_result.get("error") else "success"
-        }),
+        "payload": json.dumps(payload_dict),
         "error": ""
     }
 
@@ -57,12 +64,13 @@ def send_callback_to_siddhi(incident_id, case_id, event_name, dcr_result):
 
     requests.post(SIDDHI_CALLBACK_URL, json=payload)
 
-def process_event(incident_id, case_id, event_name, data=None):
+
+def process_event(incident_id, case_id, event_name, data=None, value=None):
     event_str = event_name.value if hasattr(event_name, 'value') else str(event_name)
-    dcr_result = execute_event(case_id, event_str, data=data)
+    dcr_result = execute_event(case_id, event_str, data=data, value=value)
     # always fetch the current enabled events so every callback tells siddhi what's possible next
     dcr_result["enabledEvents"] = get_enabled_events(case_id)
-    send_callback_to_siddhi(incident_id, case_id, event_str, dcr_result) #required because siddhi doesn't wait for the response from dcr, so we need to send it manually
+    send_callback_to_siddhi(incident_id, case_id, event_str, dcr_result, value=value)
     return jsonify({"status": "ok"})
 
 
@@ -70,35 +78,36 @@ def process_event(incident_id, case_id, event_name, data=None):
 def init_incident():
     print("[RAW BODY]", request.data)
     data = request.json
-    incident_id = data["event"]["incident_id"]
-    action = data["event"].get("action")
+    item = data[0] if isinstance(data, list) else data
+    incident_id = item["event"]["incident_id"]
+    action = item["event"].get("action")
     if not action:
         action = EventID.ArriveOnScene.value
-    payload = data["event"].get("payload", {})
+    payload = item["event"].get("payload", {})
+    value = item["event"].get("value")
 
     print(f"[InitIncident] Received incident_id = {incident_id}, action = {action}")
-    # instantiate a new DCR case
-    case_id = create_case()
-    return process_event(incident_id, case_id, action, data=payload)
+    # instantiate a new DCR case and register it as a scenario with incident_id
+    case_id = create_case(incident_id)
+    return process_event(incident_id, case_id, action, data=payload, value=value)
 
 
 @app.route("/ExecuteEventOut", methods=["POST"])
 def execute_event_route():
     print("[RAW BODY]", request.data)
     data = request.json
-    case_id = data["event"]["case_id"]
-    payload = data["event"].get("payload", {})
-    incident_id = data["event"]["incident_id"]
-    print(f"[ExecuteEvent] Received incident_id = {incident_id}")
-    action = data["event"]["action"]
+    items = data if isinstance(data, list) else [data]
+    last_res = jsonify({"status": "ok"})
+    for item in items:
+        case_id = item["event"]["case_id"]
+        payload = item["event"].get("payload", {})
+        incident_id = item["event"]["incident_id"]
+        action = item["event"]["action"]
+        value = item["event"].get("value")
+        print(f"[ExecuteEvent] Received incident_id = {incident_id}, action = {action}, value = {value}")
+        last_res = process_event(incident_id, case_id, action, data=payload, value=value)
 
-    return process_event(incident_id, case_id, action, data=payload)
-
-
-
-
-
-
+    return last_res
 
 
 @app.route("/enabled_events/<case_id>", methods=["GET"])
@@ -114,7 +123,7 @@ def get_available_actions():
     case_id = data.get("case_id")
     events = get_enabled_events(case_id)
     dcr_result = {"error": False, "message": "", "enabledEvents": events}
-    send_callback_to_siddhi(order_id, case_id, EventID.GetAvailableActions.value, dcr_result)
+    send_callback_to_siddhi(order_id, case_id, "GetAvailableActions", dcr_result)
     return jsonify({"status": "ok"})
 
 

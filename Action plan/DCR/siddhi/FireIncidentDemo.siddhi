@@ -4,21 +4,29 @@
    INPUT STREAMS
    ----------------------------- */
 
-/* Actor / Crew actions */
+/*  Actor / Crew / Tactical Lead actions */
 @source(
     type='http',
     receiver.url="http://0.0.0.0:7071/actor",
-    @map(type='json')
+    @map(type='json', @attributes(incident_id='$.incident_id', action='$.action', value='$.value'))
 )
-define stream ActorStream(incident_id string, action string);
+define stream ActorStream(incident_id string, action string, value string);
 
-/* Environment / Weather / Fire telemetry */
+/*  Humidity Sensor (unit is %) */
 @source(
     type='http',
-    receiver.url="http://0.0.0.0:7071/environment",
+    receiver.url="http://0.0.0.0:7071/humidity",
     @map(type='json')
 )
-define stream EnvironmentStream(incident_id string, action string);
+define stream HumidityStream(incident_id string, humidity int);
+
+/* Wind sensor */
+@source(
+    type='http',
+    receiver.url="http://0.0.0.0:7071/wind",
+    @map(type='json')
+)
+define stream WindStream(incident_id string, wind_direction string);
 
 /* Middleman callback */
 @source(
@@ -38,12 +46,19 @@ define stream MiddlemanStream(
 
 
 /* -----------------------------
-   TABLES
+   TABLES & INTERNAL CEP STREAM
    ----------------------------- */
 
+@primaryKey('incident_id')
 define table IncidentCases(
     incident_id string,
     case_id string
+);
+
+define stream CepDetectedEvents(
+    incident_id string,
+    action string,
+    value string
 );
 
 
@@ -58,12 +73,13 @@ define table IncidentCases(
 define stream InitIncidentOut(incident_id string, action string);
 define stream InitIncidentOutAttempt(incident_id string, case_id string, action string);
 
+
 @sink(type='http',
       publisher.url='http://microservice:5001/ExecuteEventOut',
       method='POST',
       @map(type='json'))
-define stream ExecuteEventOut(incident_id string, case_id string, action string);
-define stream ExecuteEventOutAttempt(incident_id string, case_id string, action string);
+define stream ExecuteEventOut(incident_id string, case_id string, action string, value string);
+define stream ExecuteEventOutAttempt(incident_id string, case_id string, action string, value string);
 
 
 @sink(type='http',
@@ -94,18 +110,46 @@ define stream Logging(
 );
 
 
+/* CEP */
+
+/* initialize sensor data such that the very next event checks threshold */
+from ActorStream[action == "SetupSensors"]
+select incident_id, 25 as humidity
+insert into HumidityStream;
+
+/*humidity: crossing 15% threshold */
+partition with (incident_id of HumidityStream)
+begin
+    from every (e1=HumidityStream[humidity >= 15] -> e2=HumidityStream[humidity < 15])
+    select e2.incident_id, "Humidity" as action, convert(e2.humidity, "string") as value
+    insert into CepDetectedEvents;
+
+    from every (e1=HumidityStream[humidity < 15] -> e2=HumidityStream[humidity >= 15])
+    select e2.incident_id, "Humidity" as action, convert(e2.humidity, "string") as value
+    insert into CepDetectedEvents;
+end;
+
+/* consecutive different wind directions. */
+partition with (incident_id of WindStream)
+begin
+    from every e1=WindStream, e2=WindStream[wind_direction != e1.wind_direction]
+    select e2.incident_id, "ChangeInWindDirection" as action, e2.wind_direction as value
+    insert into CepDetectedEvents;
+end;
+
+
 /* -----------------------------
    ROUTING LOGIC
    ----------------------------- */
 
-/* Incident registration*/
+/* Incident registration */
 from ActorStream[action == "ArriveOnScene"] as A
 left outer join IncidentCases as I
     on A.incident_id == I.incident_id
 select A.incident_id, I.case_id, A.action
 insert into InitIncidentOutAttempt;
 
-from InitIncidentOutAttempt[case_id is null and not(incident_id is null)]
+from InitIncidentOutAttempt[not(incident_id is null)]
 select incident_id, action
 insert into InitIncidentOut;
 
@@ -113,30 +157,26 @@ from InitIncidentOutAttempt[incident_id is null]
 select "missing_id" as incident_id, "Didn't receive an incident_id" as error
 insert into ErrorStream;
 
-from InitIncidentOutAttempt[not(case_id is null)]
-select incident_id, "Can't create an incident that already exists" as error
-insert into ErrorStream;
 
-
-/* Actor events*/
+/* Actor events */
 from ActorStream[action != "ArriveOnScene"] as A
 left outer join IncidentCases as I
     on A.incident_id == I.incident_id
-select A.incident_id, I.case_id, A.action
+select A.incident_id, I.case_id, A.action, ifThenElse(A.value is null, "", A.value) as value
 insert into ExecuteEventOutAttempt;
 
 
-/* Environment events  */
-from EnvironmentStream as E
+/* CEP-derived sensor events */
+from CepDetectedEvents as C
 left outer join IncidentCases as I
-    on E.incident_id == I.incident_id
-select E.incident_id, I.case_id, E.action
+    on C.incident_id == I.incident_id
+select C.incident_id, I.case_id, C.action, ifThenElse(C.value is null, "", C.value) as value
 insert into ExecuteEventOutAttempt;
 
 
-/* 4. Execute validated events against DCR */
+/* Execute validated events against DCR */
 from ExecuteEventOutAttempt[not(case_id is null)]
-select incident_id, case_id, action
+select incident_id, case_id, action, value
 insert into ExecuteEventOut;
 
 from ExecuteEventOutAttempt[case_id is null]
@@ -148,10 +188,12 @@ insert into ErrorStream;
    MIDDLEMAN CALLBACKS
    ----------------------------- */
 
-/* Middleman tells Siddhi the incident case is created */
-from MiddlemanStream[error == "" or error is null]
+/* Middleman tells Siddhi the incident case is created on ArriveOnScene */
+from MiddlemanStream[event == "ArriveOnScene" and (error == "" or error is null)]
 select incident_id, case_id
-insert into IncidentCases;
+update or insert into IncidentCases
+    set IncidentCases.case_id = case_id
+    on IncidentCases.incident_id == incident_id;
 
 
 /* -----------------------------

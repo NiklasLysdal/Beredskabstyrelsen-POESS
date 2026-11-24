@@ -1,0 +1,42 @@
+<log>
+  <trace id="2110317" title="incident-001 (Direct Attack)" init="2026-11-20T09:15:27" percentage="0.00" type="Required" isAccepting="true" isScenario="true" created="2026-11-20T09:15:27.767Z" createdBy="176236" modified="2026-11-20T10:15:27.770Z" modifiedBy="176236" businessType="none">
+    <event id="ArriveOnScene" timestamp="2026-11-20T09:15:28.110Z" role="Crew" label="Arrive on scene" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="SurveyForFire" timestamp="2026-11-20T09:15:30.297Z" role="Crew" label="Survey for fire" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="IdentifySpreadingPaths" timestamp="2026-11-20T09:15:30.773Z" role="Crew" label="Identify spreading paths" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="DefineMMI" timestamp="2026-11-20T09:15:31.287Z" role="Tactical lead" label="Define MMI" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="ConductRiskAssessment" timestamp="2026-11-20T09:15:31.767Z" role="Tactical lead" label="Conduct risk assessment" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="EstablishLookouts" timestamp="2026-11-20T09:15:32.297Z" role="Crew" label="Establish lookouts" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="EstablishAnchorPoint" timestamp="2026-11-20T09:15:32.920Z" role="Crew" label="Establish Anchor point" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="EstablishSecureCommunicationSystem" timestamp="2026-11-20T09:15:33.370Z" role="Crew" label="Establish secure communication system" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="DistanceToFire" timestamp="2026-11-20T09:15:33.950Z" label="Establish Safe zones" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="EstablishEscapeRoutes" timestamp="2026-11-20T09:15:34.460Z" label="Establish Escape routes" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="DrawUnitsOnMap" timestamp="2026-11-20T09:15:34.963Z" label="Draw units on map" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="ChooseAttackMethod" timestamp="2026-11-20T09:15:35.473Z" role="Tactical lead" label="Choose attack method" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="InitiateDirectAttack" timestamp="2026-11-20T09:15:36.213Z" role="Crew" label="Initiate direct attack" userid="Portal:176236" user="Niklas Lysdal" />
+  </trace>
+  <trace id="2110318" title="incident-002 (Indirect Attack &amp; Breach)" init="2026-11-20T09:15:36" percentage="0.00" type="Required" isAccepting="true" isScenario="true" created="2026-11-20T09:15:36.473Z" createdBy="176236" modified="2026-11-20T10:15:36.477Z" modifiedBy="176236" businessType="none">
+    <event id="ArriveOnScene" timestamp="2026-11-20T09:15:36.853Z" role="Crew" label="Arrive on scene" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="SurveyForFire" timestamp="2026-11-20T09:15:39.090Z" role="Crew" label="Survey for fire" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="IdentifySpreadingPaths" timestamp="2026-11-20T09:15:39.517Z" role="Crew" label="Identify spreading paths" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="DefineMMI" timestamp="2026-11-20T09:15:40.197Z" role="Tactical lead" label="Define MMI" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="ConductRiskAssessment" timestamp="2026-11-20T09:15:40.607Z" role="Tactical lead" label="Conduct risk assessment" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="DistanceToFire" timestamp="2026-11-20T09:15:41.133Z" label="Establish Safe zones" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="EstablishEscapeRoutes" timestamp="2026-11-20T09:15:41.623Z" label="Establish Escape routes" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="ChooseAttackMethod" timestamp="2026-11-20T09:15:42.193Z" role="Tactical lead" label="Choose attack method" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="InitiateIndirectAttack" timestamp="2026-11-20T09:15:42.707Z" role="Crew" label="Initiate Indirect attack" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="EstablishControlLine" timestamp="2026-11-20T09:15:43.200Z" role="Crew" label="Establish control line" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="BreachesControlLine" timestamp="2026-11-20T09:15:43.730Z" role="Fire" label="Breaches control line" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="EvacuateCrewToSafeZone" timestamp="2026-11-20T09:15:44.227Z" role="Crew" label="Evacuate crew to safe zone" userid="Portal:176236" user="Niklas Lysdal" />
+  </trace>
+  <trace id="2110319" title="incident-003 (Fire Behind Crew)" init="2026-11-20T09:15:44" percentage="0.00" type="Required" isAccepting="true" isScenario="true" created="2026-11-20T09:15:44.690Z" createdBy="176236" modified="2026-11-20T10:15:44.707Z" modifiedBy="176236" businessType="none">
+    <event id="ArriveOnScene" timestamp="2026-11-20T09:15:45.110Z" role="Crew" label="Arrive on scene" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="SurveyForFire" timestamp="2026-11-20T09:15:47.217Z" role="Crew" label="Survey for fire" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="IdentifySpreadingPaths" timestamp="2026-11-20T09:15:47.713Z" role="Crew" label="Identify spreading paths" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="DefineMMI" timestamp="2026-11-20T09:15:48.250Z" role="Tactical lead" label="Define MMI" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="ConductRiskAssessment" timestamp="2026-11-20T09:15:48.777Z" role="Tactical lead" label="Conduct risk assessment" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="DistanceToFire" timestamp="2026-11-20T09:15:49.307Z" label="Establish Safe zones" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="EstablishEscapeRoutes" timestamp="2026-11-20T09:15:49.770Z" label="Establish Escape routes" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="OccursBehindCrew" timestamp="2026-11-20T09:15:50.313Z" role="Fire" label="Occurs behind crew" userid="Portal:176236" user="Niklas Lysdal" />
+    <event id="EvacuateCrewToSafeZone" timestamp="2026-11-20T09:15:50.837Z" role="Crew" label="Evacuate crew to safe zone" userid="Portal:176236" user="Niklas Lysdal" />
+  </trace>
+</log>
